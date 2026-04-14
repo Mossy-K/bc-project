@@ -1,0 +1,149 @@
+/*
+  这个文件只负责样式。
+  以后你想改颜色、三栏宽度、按钮风格、手机布局，主要改这里。
+*/
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.wrap {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 360px 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.panel {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+h1, h2, h3 { margin: 0 0 10px; }
+
+p {
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.field { margin-bottom: 14px; }
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.stat {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primary {
+  background: #0f172a;
+  color: white;
+}
+
+.secondary {
+  background: white;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.preview {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 12px;
+  overflow: auto;
+  min-height: 640px;
+}
+
+svg {
+  width: 100%;
+  height: 620px;
+  background: white;
+  display: block;
+}
+
+.tips {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.code-note {
+  margin-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+@media (max-width: 1200px) {
+  .wrap { grid-template-columns: 320px 1fr; }
+  .view-3d-panel { grid-column: 1 / -1; }
+}
+
+@media (max-width: 960px) {
+  .wrap { grid-template-columns: 1fr; }
+  .view-3d-panel { grid-column: auto; }
+  .preview { min-height: 520px; }
+  svg { height: 500px; }
+}

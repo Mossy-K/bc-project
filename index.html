@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>包装刀版生成器</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!--
+    这个文件只负责“页面骨架”。
+    你以后如果想改布局，比如左中右三栏改成上下结构，主要改这里。
+  -->
+  <div class="wrap">
+    <div class="panel">
+      <h1>包装刀版生成器</h1>
+      <p>左边输入参数和查看计算值，中间看刀版平面图，右边看 3D 斜侧示意。</p>
+
+      <div class="field">
+        <label for="length">长度 L (mm)</label>
+        <input id="length" type="number" value="180" />
+      </div>
+      <div class="field">
+        <label for="width">宽度 W (mm)</label>
+        <input id="width" type="number" value="80" />
+      </div>
+      <div class="field">
+        <label for="height">高度 H (mm)</label>
+        <input id="height" type="number" value="45" />
+      </div>
+      <div class="field">
+        <label for="thickness">厚度 T (mm)</label>
+        <input id="thickness" type="number" value="2" />
+      </div>
+
+      <div class="stats">
+        <div class="stat">间隙 Gap<strong id="gapVal">-</strong></div>
+        <div class="stat">糊口 Glue Flap<strong id="glueVal">-</strong></div>
+        <div class="stat">翻盖高度<strong id="flipVal">-</strong></div>
+        <div class="stat">斜边补偿<strong id="glueHeightVal">-</strong></div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="downloadBtn">导出 SVG</button>
+        <button class="secondary" id="downloadPdfBtn">导出 PDF</button>
+        <button class="secondary" id="resetBtn">重置</button>
+      </div>
+
+      <div class="tips">
+        黑色为刀线，红色为压线。<br />
+        当前刀版按结构件生成：主体面、上盖片、下盖片、糊口分别绘制。
+      </div>
+
+      <div class="code-note">
+        当前界面分三栏：<br />
+        1. 左侧：输入参数 + 自动计算参数<br />
+        2. 中间：刀版平面图<br />
+        3. 右侧：3D 斜侧示意图
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>刀版平面图</h2>
+      <p>中间区域固定显示刀版展开图，方便你专注看结构和线位。</p>
+      <div class="preview">
+        <svg id="previewSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <div class="panel view-3d-panel">
+      <h2>3D 斜侧示意</h2>
+      <p>右侧显示盒体比例和尺寸标注，不需要向下滚动就能对照看。</p>
+      <div class="preview">
+        <svg id="isoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    加载顺序很重要：
+    1. geometry：负责规则和几何数据
+    2. render：负责把几何数据画出来
+    3. export：负责导出 SVG
+    4. app：负责把前面三者串起来
+  -->
+  <!-- PDF 导出依赖：jsPDF + svg2pdf -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.4/dist/svg2pdf.umd.min.js"></script>
+
+  <script src="./geometry.js"></script>
+  <script src="./render.js"></script>
+  <script src="./export.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
