@@ -1,27 +1,10 @@
-/*
-  这个文件只负责“画图”。
-  包括：
-  1. 中间刀版平面图 SVG
-  2. 右侧 3D 斜侧示意图 SVG
-  3. 一些 SVG 小工具函数
-
-  以后你想改：
-  - 线条颜色
-  - 尺寸标注风格
-  - 平面图/立体图长什么样
-  主要改这里。
-*/
-
 (function (global) {
-  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const NS = 'http://www.w3.org/2000/svg';
 
-  function createSvgEl(tagName, attrs) {
-    const el = document.createElementNS(SVG_NS, tagName);
-    Object.keys(attrs).forEach(function (key) {
-      // 避免给空字符串属性，特别是 stroke-dasharray 这类可选属性
-      if (attrs[key] !== '' && attrs[key] !== null && attrs[key] !== undefined) {
-        el.setAttribute(key, String(attrs[key]));
-      }
+  function createSvgEl(name, attrs) {
+    const el = document.createElementNS(NS, name);
+    Object.keys(attrs || {}).forEach(function (key) {
+      el.setAttribute(key, String(attrs[key]));
     });
     return el;
   }
@@ -32,215 +15,256 @@
     }
   }
 
-  function rectPath(x, y, w, h, offsetX, offsetY) {
-    return [
-      'M ' + (x + offsetX) + ' ' + (y + offsetY),
-      'L ' + (x + w + offsetX) + ' ' + (y + offsetY),
-      'L ' + (x + w + offsetX) + ' ' + (y + h + offsetY),
-      'L ' + (x + offsetX) + ' ' + (y + h + offsetY),
-      'Z'
-    ].join(' ');
-  }
-
-  function gluePath(glue, offsetX, offsetY) {
-    return [
-      'M ' + (glue.attachX + offsetX) + ' ' + (glue.attachTopY + offsetY),
-      'L ' + (glue.x + offsetX) + ' ' + (glue.y1 + offsetY),
-      'L ' + (glue.x + offsetX) + ' ' + (glue.y2 + offsetY),
-      'L ' + (glue.attachX + offsetX) + ' ' + (glue.attachBottomY + offsetY),
-      'Z'
-    ].join(' ');
-  }
-
-  function renderFlatPreview(svg, geometry) {
-    const pad = 20;
-    const width = geometry.bounds.maxX - geometry.bounds.minX + pad * 2;
-    const height = geometry.bounds.maxY - geometry.bounds.minY + pad * 2;
-    const offsetX = pad - geometry.bounds.minX;
-    const offsetY = pad - geometry.bounds.minY;
-
-    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
-    clearSvg(svg);
-
-    svg.appendChild(createSvgEl('rect', {
-      x: 0,
-      y: 0,
-      width: width,
-      height: height,
-      fill: 'white'
-    }));
-
-    geometry.panels.forEach(function (p) {
-      svg.appendChild(createSvgEl('path', {
-        d: rectPath(p.x, p.y, p.w, p.h, offsetX, offsetY),
-        fill: 'none',
-        stroke: '#111827',
-        'stroke-width': 1.2
-      }));
-    });
-
-    geometry.topFlaps.forEach(function (f) {
-      svg.appendChild(createSvgEl('path', {
-        d: rectPath(f.x, f.y, f.w, f.h, offsetX, offsetY),
-        fill: 'none',
-        stroke: '#111827',
-        'stroke-width': 1.2
-      }));
-    });
-
-    geometry.bottomFlaps.forEach(function (f) {
-      svg.appendChild(createSvgEl('path', {
-        d: rectPath(f.x, f.y, f.w, f.h, offsetX, offsetY),
-        fill: 'none',
-        stroke: '#111827',
-        'stroke-width': 1.2
-      }));
-    });
-
-    svg.appendChild(createSvgEl('path', {
-      d: gluePath(geometry.glueFlapShape, offsetX, offsetY),
-      fill: 'none',
-      stroke: '#111827',
-      'stroke-width': 1.2
-    }));
-
-    geometry.foldLines.forEach(function (line) {
-      svg.appendChild(createSvgEl('line', {
-        x1: line.x1 + offsetX,
-        y1: line.y1 + offsetY,
-        x2: line.x2 + offsetX,
-        y2: line.y2 + offsetY,
-        stroke: '#ef4444',
-        'stroke-width': 1
-      }));
-    });
-  }
-
-  function isoProject(x, y, z, scale, originX, originY) {
+  function getBounds(geometry) {
+    if (geometry && geometry.bounds) return geometry.bounds;
     return {
-      x: originX + (x - y) * 0.866 * scale,
-      y: originY + (x + y) * 0.5 * scale - z * scale
+      minX: 0,
+      minY: 0,
+      maxX: 100,
+      maxY: 100
     };
   }
 
-  function drawSvgLine(svg, a, b, opts) {
-    svg.appendChild(createSvgEl('line', {
-      x1: a.x,
-      y1: a.y,
-      x2: b.x,
-      y2: b.y,
-      stroke: opts.stroke || '#111827',
-      'stroke-width': opts.strokeWidth || 1.4,
-      'stroke-dasharray': opts.dash || null
-    }));
+  function setupViewBox(svg, bounds, padding) {
+    const pad = padding || 20;
+    const width = Math.max(1, bounds.maxX - bounds.minX);
+    const height = Math.max(1, bounds.maxY - bounds.minY);
+
+    svg.setAttribute(
+      'viewBox',
+      [
+        bounds.minX - pad,
+        bounds.minY - pad,
+        width + pad * 2,
+        height + pad * 2
+      ].join(' ')
+    );
   }
 
-  function drawSvgText(svg, text, x, y, rotate) {
-    const el = createSvgEl('text', {
-      x: x,
-      y: y,
-      fill: '#0f172a',
-      'font-size': 14,
-      'font-family': 'Arial, PingFang SC, Microsoft YaHei, sans-serif'
-    });
+  function drawLine(svg, line, options) {
+    svg.appendChild(
+      createSvgEl('line', {
+        x1: line.x1,
+        y1: line.y1,
+        x2: line.x2,
+        y2: line.y2,
+        fill: 'none',
+        stroke: options.stroke || '#e60012',
+        'stroke-width': options.strokeWidth || 1.28,
+        'stroke-linejoin': options.lineJoin || 'round',
+        'stroke-linecap': options.lineCap || 'round'
+      })
+    );
+  }
 
-    if (rotate) {
-      el.setAttribute('transform', 'rotate(' + rotate + ' ' + x + ' ' + y + ')');
+  function drawPath(svg, d, options) {
+    svg.appendChild(
+      createSvgEl('path', {
+        d: d,
+        fill: options.fill || 'none',
+        stroke: options.stroke || '#000000',
+        'stroke-width': options.strokeWidth || 0.85,
+        'stroke-linejoin': options.lineJoin || 'round',
+        'stroke-linecap': options.lineCap || 'round'
+      })
+    );
+  }
+
+  function drawRect(svg, item, options) {
+    svg.appendChild(
+      createSvgEl('rect', {
+        x: item.x,
+        y: item.y,
+        width: item.w,
+        height: item.h,
+        fill: options.fill || 'none',
+        stroke: options.stroke || '#000000',
+        'stroke-width': options.strokeWidth || 0.85,
+        'stroke-linejoin': options.lineJoin || 'round',
+        'stroke-linecap': options.lineCap || 'round'
+      })
+    );
+  }
+
+  function drawPolygon(svg, points, options) {
+    const pointStr = points.map(function (p) {
+      return p.x + ',' + p.y;
+    }).join(' ');
+
+    svg.appendChild(
+      createSvgEl('polygon', {
+        points: pointStr,
+        fill: options.fill || 'none',
+        stroke: options.stroke || '#000000',
+        'stroke-width': options.strokeWidth || 0.85,
+        'stroke-linejoin': options.lineJoin || 'round',
+        'stroke-linecap': options.lineCap || 'round'
+      })
+    );
+  }
+
+  function renderFlatPreview(svg, geometry) {
+    clearSvg(svg);
+
+    if (!geometry) {
+      svg.setAttribute('viewBox', '0 0 100 100');
+      return;
     }
 
-    el.textContent = text;
-    svg.appendChild(el);
-  }
-
-  function drawArrow(svg, from, to, label, labelX, labelY, rotate) {
-    drawSvgLine(svg, from, to, { stroke: '#ef4444', strokeWidth: 1.2 });
-
-    const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const headLen = 8;
-
-    [from, to].forEach(function (p, idx) {
-      const dir = idx === 0 ? angle : angle + Math.PI;
-      const a1 = {
-        x: p.x + Math.cos(dir - Math.PI / 6) * headLen,
-        y: p.y + Math.sin(dir - Math.PI / 6) * headLen
-      };
-      const a2 = {
-        x: p.x + Math.cos(dir + Math.PI / 6) * headLen,
-        y: p.y + Math.sin(dir + Math.PI / 6) * headLen
-      };
-      drawSvgLine(svg, p, a1, { stroke: '#ef4444', strokeWidth: 1.2 });
-      drawSvgLine(svg, p, a2, { stroke: '#ef4444', strokeWidth: 1.2 });
-    });
-
-    drawSvgText(svg, label, labelX, labelY, rotate || 0);
-  }
-
-  function renderIsoPreview(svg, input) {
-    clearSvg(svg);
-    svg.setAttribute('viewBox', '0 0 720 420');
+    const bounds = getBounds(geometry);
+    setupViewBox(svg, bounds, 20);
 
     svg.appendChild(createSvgEl('rect', {
-      x: 0,
-      y: 0,
-      width: 720,
-      height: 420,
-      fill: 'white'
+      x: bounds.minX - 20,
+      y: bounds.minY - 20,
+      width: bounds.maxX - bounds.minX + 40,
+      height: bounds.maxY - bounds.minY + 40,
+      fill: '#ffffff',
+      stroke: 'none'
     }));
 
-    const L = input.length;
-    const W = input.width;
-    const H = input.height;
-    const maxDim = Math.max(L, W, H, 1);
-    const scale = 180 / maxDim;
-    const originX = 270;
-    const originY = 280;
+    // 黑色外轮廓
+    if (geometry.outlinePaths && geometry.outlinePaths.length) {
+      geometry.outlinePaths.forEach(function (d) {
+        drawPath(svg, d, {
+          fill: 'none',
+          stroke: '#000000',
+          strokeWidth: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round'
+        });
+      });
+    } else {
+      (geometry.panels || []).forEach(function (item) {
+        drawRect(svg, item, {
+          fill: 'none',
+          stroke: '#000000',
+          strokeWidth: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round'
+        });
+      });
 
-    const A = isoProject(0, 0, 0, scale, originX, originY);
-    const B = isoProject(L, 0, 0, scale, originX, originY);
-    const C = isoProject(L, W, 0, scale, originX, originY);
-    const D = isoProject(0, W, 0, scale, originX, originY);
-    const E = isoProject(0, 0, H, scale, originX, originY);
-    const F = isoProject(L, 0, H, scale, originX, originY);
-    const G = isoProject(L, W, H, scale, originX, originY);
-    const Ht = isoProject(0, W, H, scale, originX, originY);
+      (geometry.topFlaps || []).forEach(function (item) {
+        drawRect(svg, item, {
+          fill: 'none',
+          stroke: '#000000',
+          strokeWidth: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round'
+        });
+      });
 
-    [
-      [A, B], [B, C], [C, D], [D, A],
-      [E, F], [F, G], [G, Ht], [Ht, E],
-      [A, E], [B, F], [C, G], [D, Ht]
-    ].forEach(function (pair) {
-      drawSvgLine(svg, pair[0], pair[1], { stroke: '#111827', strokeWidth: 1.6 });
+      (geometry.bottomFlaps || []).forEach(function (item) {
+        drawRect(svg, item, {
+          fill: 'none',
+          stroke: '#000000',
+          strokeWidth: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round'
+        });
+      });
+
+      if (geometry.glueFlap && geometry.glueFlap.points) {
+        drawPolygon(svg, geometry.glueFlap.points, {
+          fill: 'none',
+          stroke: '#000000',
+          strokeWidth: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round'
+        });
+      }
+    }
+
+    // 红色折线：改成实线，不要虚线
+    (geometry.foldLines || []).forEach(function (line) {
+      drawLine(svg, line, {
+        stroke: '#e60012',
+        strokeWidth: 1.28,
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
     });
 
-    // 辅助虚线
-    drawSvgLine(svg, A, C, { stroke: '#cbd5e1', strokeWidth: 1, dash: '4 4' });
-    drawSvgLine(svg, E, G, { stroke: '#cbd5e1', strokeWidth: 1, dash: '4 4' });
+    // 预留蓝色尺寸线接口，先不启用
+    (geometry.dimensionLines || []).forEach(function (line) {
+      drawLine(svg, line, {
+        stroke: '#2958a7',
+        strokeWidth: 0.85,
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+    });
+  }
 
-    // 长度标注
-    const lenFrom = { x: A.x, y: A.y + 26 };
-    const lenTo = { x: B.x, y: B.y + 26 };
-    drawSvgLine(svg, A, lenFrom, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawSvgLine(svg, B, lenTo, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawArrow(svg, lenFrom, lenTo, 'L ' + L + ' mm', (lenFrom.x + lenTo.x) / 2 - 10, (lenFrom.y + lenTo.y) / 2 - 8, 26);
+  function projectIso(x, y, z) {
+    return {
+      x: x - y * 0.6,
+      y: z - y * 0.35
+    };
+  }
 
-    // 宽度标注
-    const widFrom = { x: B.x + 26, y: B.y + 6 };
-    const widTo = { x: C.x + 26, y: C.y + 6 };
-    drawSvgLine(svg, B, widFrom, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawSvgLine(svg, C, widTo, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawArrow(svg, widFrom, widTo, 'W ' + W + ' mm', (widFrom.x + widTo.x) / 2 + 10, (widFrom.y + widTo.y) / 2 - 2, -26);
+  function renderIsoPreview(svg, preview3d) {
+    clearSvg(svg);
 
-    // 高度标注
-    const heiFrom = { x: C.x + 34, y: C.y };
-    const heiTo = { x: G.x + 34, y: G.y };
-    drawSvgLine(svg, C, heiFrom, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawSvgLine(svg, G, heiTo, { stroke: '#94a3b8', strokeWidth: 1, dash: '3 3' });
-    drawArrow(svg, heiFrom, heiTo, 'H ' + H + ' mm', heiTo.x + 8, (heiFrom.y + heiTo.y) / 2, -90);
+    const L = Math.max(1, Number(preview3d && preview3d.length) || 100);
+    const W = Math.max(1, Number(preview3d && preview3d.width) || 60);
+    const H = Math.max(1, Number(preview3d && preview3d.height) || 80);
+
+    const p1 = projectIso(0, 0, 0);
+    const p2 = projectIso(L, 0, 0);
+    const p3 = projectIso(L, W, 0);
+    const p4 = projectIso(0, W, 0);
+
+    const p5 = projectIso(0, 0, H);
+    const p6 = projectIso(L, 0, H);
+    const p7 = projectIso(L, W, H);
+    const p8 = projectIso(0, W, H);
+
+    const all = [p1, p2, p3, p4, p5, p6, p7, p8];
+    const minX = Math.min.apply(null, all.map(function (p) { return p.x; }));
+    const maxX = Math.max.apply(null, all.map(function (p) { return p.x; }));
+    const minY = Math.min.apply(null, all.map(function (p) { return p.y; }));
+    const maxY = Math.max.apply(null, all.map(function (p) { return p.y; }));
+
+    const pad = 30;
+    svg.setAttribute(
+      'viewBox',
+      [
+        minX - pad,
+        minY - pad,
+        (maxX - minX) + pad * 2,
+        (maxY - minY) + pad * 2
+      ].join(' ')
+    );
+
+    svg.appendChild(createSvgEl('rect', {
+      x: minX - pad,
+      y: minY - pad,
+      width: (maxX - minX) + pad * 2,
+      height: (maxY - minY) + pad * 2,
+      fill: '#ffffff',
+      stroke: 'none'
+    }));
+
+    function poly(points, fill) {
+      const str = points.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+      svg.appendChild(createSvgEl('polygon', {
+        points: str,
+        fill: fill,
+        stroke: '#000000',
+        'stroke-width': 0.85,
+        'stroke-linejoin': 'round',
+        'stroke-linecap': 'round'
+      }));
+    }
+
+    poly([p5, p6, p7, p8], '#f8fafc');
+    poly([p2, p3, p7, p6], '#ffffff');
+    poly([p1, p2, p6, p5], '#e5e7eb');
   }
 
   global.PackagingRender = {
-    rectPath: rectPath,
-    gluePath: gluePath,
     renderFlatPreview: renderFlatPreview,
     renderIsoPreview: renderIsoPreview
   };
