@@ -16,7 +16,7 @@
           glueFlap: '待定义',
           flipcover: '待定义',
           glueFlapHeight: '待定义',
-          tolerance: '待配置'
+          tolerance: input.tolerance || '待选择材料'
         },
         geometry: null,
         preview3d: {

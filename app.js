@@ -20,19 +20,105 @@
     resetBtn: document.getElementById('resetBtn')
   };
 
+  const materialConfig = Array.isArray(window.PackagingMaterialConfig)
+    ? window.PackagingMaterialConfig
+    : [];
+
+  let currentResult = null;
+
   function num(value) {
     return Number(value) || 0;
   }
 
+  function clearOptions(selectEl) {
+    while (selectEl && selectEl.firstChild) {
+      selectEl.removeChild(selectEl.firstChild);
+    }
+  }
+
+  function addOption(selectEl, value, text) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    selectEl.appendChild(option);
+    return option;
+  }
+
+  function getMaterialByName(name) {
+    return materialConfig.find(function (item) {
+      return item.name === name;
+    }) || null;
+  }
+
+  function getSelectedMaterial() {
+    return els.material ? getMaterialByName(els.material.value) : null;
+  }
+
+  function getSelectedThicknessItem() {
+    const material = getSelectedMaterial();
+    if (!material || !els.thickness) return null;
+
+    const index = Number(els.thickness.value);
+    if (!Number.isInteger(index)) return null;
+
+    return material.items[index] || null;
+  }
+
+  function fillMaterialOptions() {
+    if (!els.material) return;
+
+    clearOptions(els.material);
+    addOption(els.material, '', '-- 请选择材料 --');
+
+    materialConfig.forEach(function (material) {
+      addOption(els.material, material.name, material.name);
+    });
+  }
+
+  function fillThicknessOptions() {
+    if (!els.thickness) return;
+
+    clearOptions(els.thickness);
+
+    const material = getSelectedMaterial();
+    if (!material) {
+      addOption(els.thickness, '', '-- 请先选择材料 --');
+      return;
+    }
+
+    addOption(els.thickness, '', '-- 请选择厚度 --');
+
+    material.items.forEach(function (item, index) {
+      addOption(
+        els.thickness,
+        String(index),
+        item.thickness + ' mm（' + item.gram + 'g）'
+      );
+    });
+  }
+
+  function getMaterialToleranceText() {
+    const material = getSelectedMaterial();
+    if (!material) return '待选择材料';
+    return material.tolerance || '表格未标注';
+  }
+
   function getInputParams() {
+    const material = getSelectedMaterial();
+    const thicknessItem = getSelectedThicknessItem();
+    const thicknessValue = thicknessItem ? Number(thicknessItem.thicknessValue) : 0.5;
+
     return {
       boxType: els.boxType ? els.boxType.value : 'regular-carton',
       length: num(els.length.value),
       width: num(els.width.value),
       height: num(els.height.value),
-      material: els.material ? els.material.value : '',
-      thickness: els.thickness ? els.thickness.value : '',
-      thicknessValue: 0.5,
+      material: material ? material.name : '',
+      gram: thicknessItem ? thicknessItem.gram : '',
+      thickness: thicknessItem ? thicknessItem.thickness : '',
+      thicknessValue: thicknessValue,
+      tolerance: getMaterialToleranceText(),
+      // 这里不是材料表数据，只是现有盒型公式保留的默认结构参数。
       innerLoss: 0.3,
       outerGain: 0.2
     };
@@ -105,7 +191,7 @@
       els.glueVal.textContent = '待定义';
       els.flipVal.textContent = '待定义';
       els.glueHeightVal.textContent = '待定义';
-      els.toleranceVal.textContent = '待配置';
+      els.toleranceVal.textContent = getMaterialToleranceText();
       return;
     }
 
@@ -113,7 +199,7 @@
     els.glueVal.textContent = result.display.glueFlap || '待定义';
     els.flipVal.textContent = result.display.flipcover || '待定义';
     els.glueHeightVal.textContent = result.display.glueFlapHeight || '待定义';
-    els.toleranceVal.textContent = result.display.tolerance || '待配置';
+    els.toleranceVal.textContent = result.display.tolerance || getMaterialToleranceText();
   }
 
   function update() {
@@ -125,6 +211,7 @@
       }
 
       const result = window.PackagingGeometry.buildByType(input.boxType, input);
+      currentResult = result;
       updateDisplay(result);
 
       if (
@@ -156,6 +243,7 @@
       return result;
     } catch (error) {
       console.error(error);
+      currentResult = null;
 
       updateDisplay(null);
 
@@ -177,26 +265,60 @@
     els.width.value = '80';
     els.height.value = '45';
     if (els.material) els.material.value = '';
-    if (els.thickness) els.thickness.value = '';
+    fillThicknessOptions();
     update();
   }
 
   function bindEvents() {
-    [els.boxType, els.length, els.width, els.height, els.material, els.thickness].forEach(function (inputEl) {
+    [els.boxType, els.length, els.width, els.height].forEach(function (inputEl) {
       if (!inputEl) return;
       inputEl.addEventListener('input', update);
       inputEl.addEventListener('change', update);
     });
 
+    if (els.material) {
+      els.material.addEventListener('change', function () {
+        fillThicknessOptions();
+        update();
+      });
+    }
+
+    if (els.thickness) {
+      els.thickness.addEventListener('change', update);
+    }
+
     if (els.downloadBtn) {
       els.downloadBtn.addEventListener('click', function () {
-        alert('当前先优先打通多盒型预览，导出稍后再接。');
+        try {
+          if (!window.PackagingExport || typeof window.PackagingExport.serializeCurrentSvg !== 'function') {
+            throw new Error('导出模块未加载成功');
+          }
+          const svgText = window.PackagingExport.serializeCurrentSvg(els.previewSvg);
+          window.PackagingExport.downloadSvg('packaging-dieline.svg', svgText);
+        } catch (error) {
+          console.error(error);
+          alert(error && error.message ? error.message : 'SVG 导出失败');
+        }
       });
     }
 
     if (els.downloadPdfBtn) {
       els.downloadPdfBtn.addEventListener('click', function () {
-        alert('当前先优先打通多盒型预览，PDF 导出稍后再接。');
+        Promise.resolve()
+          .then(function () {
+            if (!window.PackagingExport || typeof window.PackagingExport.downloadPdf !== 'function') {
+              throw new Error('PDF 导出模块未加载成功');
+            }
+            const result = currentResult || update();
+            if (!result || !result.geometry) {
+              throw new Error('没有可导出的刀版数据');
+            }
+            return window.PackagingExport.downloadPdf('packaging-dieline.pdf', result);
+          })
+          .catch(function (error) {
+            console.error(error);
+            alert(error && error.message ? error.message : 'PDF 导出失败');
+          });
       });
     }
 
@@ -205,6 +327,8 @@
     }
   }
 
+  fillMaterialOptions();
+  fillThicknessOptions();
   bindEvents();
   update();
 })();

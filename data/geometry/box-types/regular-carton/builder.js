@@ -64,6 +64,26 @@
         maxX: x5,
         maxY: Math.max(y2 + d.F, y2 - d.OF + d.F1)
       };
+
+      const topY = bounds.minY;
+      const bottomY = bounds.maxY;
+      const exportDimensions = {
+        padding: { left: 48, top: 34, right: 46, bottom: 34 },
+        horizontal: [
+          { x1: x0, y1: topY, x2: x5, y2: topY, fromY: topY, lineY: topY - 20, label: (x5 - x0).toFixed(2).replace(/\.00$/, '') },
+          { x1: x0, x2: x1, fromY: bottomY, lineY: bottomY + 20, label: d.G.toFixed(2).replace(/\.00$/, ''), textDy: 7 },
+          { x1: x1, x2: x2, fromY: bottomY, lineY: bottomY + 20, label: d.L.toFixed(2).replace(/\.00$/, ''), textDy: 7 },
+          { x1: x2, x2: x3, fromY: bottomY, lineY: bottomY + 20, label: d.W.toFixed(2).replace(/\.00$/, ''), textDy: 7 },
+          { x1: x3, x2: x4, fromY: bottomY, lineY: bottomY + 20, label: d.L.toFixed(2).replace(/\.00$/, ''), textDy: 7 },
+          { x1: x4, x2: x5, fromY: bottomY, lineY: bottomY + 20, label: d.W1.toFixed(2).replace(/\.00$/, ''), textDy: 7 }
+        ],
+        vertical: [
+          { y1: topY, y2: bottomY, fromX: x5, lineX: x5 + 22, label: (bottomY - topY).toFixed(2).replace(/\.00$/, ''), textDx: 9, rotateText: false },
+          { y1: y1 - d.F, y2: y1, fromX: x0, lineX: x0 - 24, label: d.F.toFixed(2).replace(/\.00$/, '') },
+          { y1: y1, y2: y2, fromX: x0, lineX: x0 - 24, label: d.D.toFixed(2).replace(/\.00$/, '') },
+          { y1: y2, y2: y2 + d.F, fromX: x0, lineX: x0 - 24, label: d.F.toFixed(2).replace(/\.00$/, '') }
+        ]
+      };
   
       return resultBuilder.buildResult(
         meta,
@@ -73,9 +93,10 @@
           glueFlap: d.G.toFixed(2) + ' mm',
           flipcover: d.F.toFixed(2) + ' mm',
           glueFlapHeight: d.F1.toFixed(2) + ' mm',
-          tolerance: '待配置'
+          tolerance: input.tolerance || '待选择材料'
         },
         {
+          exportDimensions: exportDimensions,
           panels: panels,
           topFlaps: topFlaps,
           bottomFlaps: bottomFlaps,

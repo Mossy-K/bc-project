@@ -220,7 +220,7 @@
       const IIL = Number(input.innerLoss) || 0.3;
       const OOG = Number(input.outerGain) || 0.2;
   
-      const CCAL = calcCCAL(L, W, D);
+      const CCAL = Number(input.thicknessValue) || calcCCAL(L, W, D);
       const W1 = calcW1(W, CCAL);
       const G = calcG(L, W, W1);
       const GT = calcGT(D, G, CCAL);
@@ -228,7 +228,7 @@
       const E = calcE(L, W);
       const CX = calcCX(CCAL, E);
       const Y1 = calcY1(CCAL, E);
-      const W2 = W - Y1;
+      const W2 = W ;
       const Y2 = calcY2(CCAL, E);
       const CR1 = calcCR1(CCAL, E, CX, Y1);
   
