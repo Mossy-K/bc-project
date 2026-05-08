@@ -2,6 +2,7 @@
     const meta = global.PackagingBoxTypeRegularCartonMeta;
     const formulas = global.PackagingBoxTypeRegularCartonFormulas;
     const resultBuilder = global.PackagingGeometryResultBuilder;
+    const M = global.PackagingGeometryMath;
   
     function build(input) {
       const d = formulas.derive(input);
@@ -40,12 +41,19 @@
         { name: 'FLB', x: x4, y: y2 - d.OF, w: d.W1, h: d.F1 }
       ];
   
+      // 对口纸箱左侧糊口舌按规范图绘制：
+      // - G 为糊口舌宽度；
+      // - GT 为上下斜切角；
+      // - 斜边从主体上下红色折线端点开始，向左侧外边内收；
+      // - 左侧外边是一段垂直线，不能做成外凸尖角。
+      const rawGlueOffset = d.G * Math.tan((d.GT * Math.PI) / 180);
+      const glueOffset = M.clamp(rawGlueOffset, 2, Math.max(2, d.D / 4));
       const glueFlap = {
-        name: 'HL',
+        name: 'G',
         points: [
           { x: x1, y: y1 },
-          { x: x0, y: y1 - d.G * Math.tan((d.GT * Math.PI) / 180) },
-          { x: x0, y: y2 + d.G * Math.tan((d.GT * Math.PI) / 180) },
+          { x: x0, y: y1 + glueOffset },
+          { x: x0, y: y2 - glueOffset },
           { x: x1, y: y2 }
         ]
       };

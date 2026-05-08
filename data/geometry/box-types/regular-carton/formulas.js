@@ -25,7 +25,9 @@
       if (totalWidth > 800) G = 45;
       G = M.clamp(G, 10, Math.max(10, W1 - 1));
   
-      const GT = M.round(Math.min(45, Math.atan((D / 2 - OF) / Math.max(G, 0.001)) * 180 / Math.PI), 2);
+      // GT 是对口纸箱糊口舌上下斜切角度。参考规范图，GT 属于可调整参数，
+      // 不应再按箱高自动推到 45 度，否则糊口舌会形成过大的尖角。
+      const GT = M.round(Number(input.glueFlapAngle) || 20, 2);
   
       let F = W / 2;
       if (CCAL <= 0.8) F = W / 2 + 0.5;
